@@ -6,8 +6,9 @@ custom skills, subagents, and support utilities. It is installed to
 
 ## What to work on
 
-- **`settings.json` / `mcp.json` / `pi-defaults.json` / `subagents.json`** —
-  runtime agent behavior, providers, MCP servers, extension installs.
+- **`settings.json.template` / `mcp.json.template` / `pi-defaults.json` /
+  `subagents.json`** — runtime agent behavior (rendered from templates),
+  providers, MCP servers, extension installs.
 - **`skills/`** — reusable procedures (each skill is a `SKILL.md`).
 - **`agents/`** — subagent definitions. Always default to `model: parent`;
   never hardcode a model.
@@ -17,10 +18,10 @@ custom skills, subagents, and support utilities. It is installed to
 
 ## Process
 
-1. Fork the repo, branch off `main`.
+1. Fork the repo, branch off `dev` (the default branch).
 2. Make focused, minimal changes and keep `settings.json#packages` in sync with
    this README.
-3. Open a PR against `main`.
+3. Open a PR against `dev`.
 
 See the full guide at
-[devstack/CONTRIBUTING.md](https://github.com/lpb-stack/devstack/blob/main/CONTRIBUTING.md).
+[devstack/CONTRIBUTING.md](https://github.com/lpb-stack/devstack/blob/dev/CONTRIBUTING.md).

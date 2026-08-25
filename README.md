@@ -12,7 +12,7 @@ config/
 ├── lpb-memory-config.json # Memory extension config
 ├── install.sh             # One-command bootstrap script
 ├── .env.example           # Environment variables template
-├── mcp.json               # MCP server configuration
+├── mcp.json.template      # MCP server template (rendered at first boot → mcp.json)
 ├── skills/                # Custom skills (installed to ~/.pi/agent/skills/)
 │   ├── agent-browser-mcp-integration/
 │   │   └── SKILL.md
@@ -66,23 +66,29 @@ lpb-config reset [--force]      # Re-clone (destructive)
 lpb-config merge                # Interactive merge
 lpb-config render [--force]     # Regenerate runtime config from templates
 lpb-config align                # Update extension pins to latest tags
+lpb-config sync-pins            # Sync extension pins to the pipeline's stack version
+lpb-config setup                # First-run setup wizard (provider, model, memory)
+lpb-config check                # Validate the installation (read-only checklist)
 
 lpb-config memory show          # Show lpb-memory config
 lpb-config memory setup         # Interactive config wizard
 lpb-config memory setup --non-interactive  # Generate from template
 ```
 
-Workspace/validate operations live in `lpb-devstack` (dev-time tool):
+`sync-pins` is pipeline-sensitive: `lpb-config --tag main sync-pins` syncs
+pins to the stable stack version. Workspace/validate operations live in
+`lpb-devstack` (dev-time tool):
 
 ```
 lpb-devstack validate                          # Full stack alignment check
-lpb-devstack workspace status | sync | sync-pins  # Workspace repo management
+lpb-devstack workspace status | sync           # Workspace repo management
 ```
 
 ### Template rendering
 
 This repo ships templates (`settings.json.template`,
-`lpb-memory-config.json.template`); the rendered runtime files are gitignored.
+`lpb-memory-config.json.template`, `mcp.json.template`); the rendered runtime
+files are gitignored.
 `start.sh` generates them on first boot only, so lpb-config also renders:
 `reset` re-renders (force), `update`/`merge` re-render (non-forcing), and
 `lpb-config render [--force]` regenerates on demand. Non-forcing render never
@@ -127,9 +133,13 @@ Default settings (from template):
 - **No llmModelOverride** — uses main model (user configures after /login)
 
 ### mcp.json
+MCP server configuration — **runtime file**, rendered from `mcp.json.template`
+at first boot (gitignored; the setup wizard's MCP step, step 6, offers an
+enable/disable toggle per server — `"enabled": false` turns a server off):
 - **exa** — Web search and content fetch (requires EXA_API_KEY)
 - **agent-browser** — Browser automation
 - **chrome-devtools** — Diagnostics (disabled by default)
+- **context7-mcp** — Up-to-date library docs (optional CONTEXT7_API_KEY)
 
 ## Environment Variables
 

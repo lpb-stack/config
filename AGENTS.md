@@ -42,6 +42,11 @@ Qwen3.6-35B with thinking enabled throws "context size exceeded" when
 
 ## MCP Servers
 
+Servers are declared in `mcp.json` (runtime file, rendered from
+`mcp.json.template`; the setup wizard's MCP step toggles servers on/off,
+`"enabled": false` disables one). The pi-mcp-adapter proxies them — tool
+discovery is on-demand, servers start on first use.
+
 ### Exa (`exa`)
 Web search and content fetch. Requires `EXA_API_KEY` environment variable.
 
@@ -84,20 +89,28 @@ Web research specialist. Searches the web using Exa MCP and synthesizes focused 
 
 ## Support Files
 
-Support utilities are installed to `/opt/pi-support/`:
+Support utilities are baked into the devstack image. The Dockerfile `COPY`
+lines are the source of truth — see `/opt/devstack/` (deployment scripts) and
+`/opt/pi-support/` (agent-facing tools). User-facing CLIs are symlinked into
+`~/.local/bin` (on PATH):
 
 | Path | Purpose |
 |---|---|
-| `/opt/pi-support/bin/session-uuid` | Generate unique session IDs for worktree isolation |
-| `/opt/pi-support/bin/browser-state-cleanup` | Cleanup browser state volumes |
+| `/opt/devstack/start.sh` | Container start script (config clone, render, entrypoint glue) |
+| `/opt/devstack/install-browser.py` | Install Chrome-for-Testing + agent-browser (symlink: `install-browser`) |
+| `/opt/devstack/validate.py` | Stack validation helper (symlink: `validate`) |
+| `/opt/pi-support/browser-state-cleanup.py` | Cleanup browser state volumes (symlink: `browser-state-cleanup`) |
+| `/opt/pi-support/install-openspec.py` | Bootstrap OpenSpec in a project (symlink: `install-openspec`) |
 | `/opt/pi-support/browser-validate.ts` | Browser validation entry point |
 | `/opt/pi-support/config/agent-browser-action-policy.json` | Agent action policies |
 | `/opt/pi-support/config/subagent-browser-prompt.txt` | Subagent browser prompt |
 | `/opt/pi-support/docs/subagent-spawning-pattern.md` | Subagent spawning documentation |
 | `/opt/pi-support/schemas/browser-validation-schema.json` | Unified JSON validation schema (browser validation + subagent) |
 | `/opt/pi-support/session-uuid.ts` | Session UUID generation utility |
-| `/opt/pi-support/start.sh` | Start script |
 | `/opt/pi-support/validate-subagent-output.ts` | Subagent output validation |
+| `/opt/pi-support/localpibox/` | Shared Python package for the stack CLIs |
+| `/opt/pi-support/lpb-config` | Config repo manager CLI (symlink: `lpb-config`) |
+| `/opt/pi-support/lpb-devstack` | DevOps workspace CLI (symlink: `lpb-devstack`) |
 
 ## Environment Variables
 

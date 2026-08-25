@@ -14,7 +14,7 @@ verified state.
 |---|---|
 | **README structure** | ✅ Matches actual file layout (flat `support/`, all agent files listed, `lpb-memory-config.json` documented) |
 | **settings.json packages** | ✅ README matches `settings.json` (5 extensions; branch refs `@lpb` / `@main`) |
-| **mcp.json** | ✅ exa / agent-browser / chrome-devtools(disabled) |
+| **mcp.json** | ✅ runtime file rendered from `mcp.json.template` — exa / agent-browser / context7-mcp enabled, chrome-devtools disabled |
 | **skills/** | ✅ 3 skills (agent-browser-mcp-integration, browser-validation, mcp-vision-analysis) |
 | **agents/** | ✅ 5 files; all use `model: parent` (never hardcoded / no Anthropic) |
 | **support/** | ✅ Match `/opt/pi-support` layout (config/, docs/, schemas/) |
@@ -34,7 +34,7 @@ config/
 ├── .env.example
 ├── lpb-memory-config.json
 ├── settings.json
-├── mcp.json
+├── mcp.json.template      # → runtime mcp.json (gitignored)
 ├── pi-defaults.json
 ├── subagents.json
 ├── skills/{agent-browser-mcp-integration,browser-validation,mcp-vision-analysis}/SKILL.md
