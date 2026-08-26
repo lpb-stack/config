@@ -69,10 +69,10 @@ Validated report saved to `/browser-states/<session-id>/validated.json`
 
 ## Configuration
 
-| Env Var | Default | Purpose |
+| Env Var / Setting | Value | Purpose |
 |---|---|---|
-| `LEMONADE_BASE_URL` | `http://127.0.0.1:13305/v1` | Vision model API |
-| `VISION_MODEL` | `Qwen3.6-35B-A3B-MTP-GGUF` | Vision model ID |
+| `LEMONADE_BASE_URL` | from `lpb-config show` (external host — the `127.0.0.1` env value is a placeholder) | Vision model API |
+| `VISION_MODEL` | default model from `lpb-config show` | Vision model ID |
 
 ## Pitfalls
 

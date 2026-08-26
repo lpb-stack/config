@@ -1,10 +1,12 @@
 ---
-description: Visual analysis of webpages using local Qwen3.6 vision model
+description: Visual analysis of webpages using the configured Lemonade vision model
 ---
 
 # mcp-vision-analysis
 
-Analyze webpages visually using the local Qwen3.6-35B vision model. Captures screenshots and sends them to the Lemonade vision API for structured analysis.
+Analyze webpages visually using the Lemonade vision model (the default model
+from `lpb-config show` — never hardcode a model name). Captures screenshots
+and sends them to the Lemonade vision API for structured analysis.
 
 ## When to Use
 
@@ -52,10 +54,10 @@ npx tsx /opt/pi-support/browser-validate.ts https://example.com
 
 ## Configuration
 
-| Env Var | Default | Purpose |
+| Env Var / Setting | Value | Purpose |
 |---|---|---|
-| `LEMONADE_BASE_URL` | `http://127.0.0.1:13305/v1` | Vision model API |
-| `VISION_MODEL` | `Qwen3.6-35B-A3B-MTP-GGUF` | Vision model ID |
+| `LEMONADE_BASE_URL` | from `lpb-config show` (external host — the `127.0.0.1` env value is a placeholder) | Vision model API |
+| `VISION_MODEL` | default model from `lpb-config show` | Vision model ID |
 | `AGENT_BROWSER_MAX_OUTPUT` | `4000` | Max chars for snapshot output |
 
 ## Pitfalls

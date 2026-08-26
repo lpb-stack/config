@@ -29,7 +29,7 @@ When you need browser automation — navigation, element interaction, screenshot
 ```
 agent-browser MCP (primary: navigation, refs, clicks, screenshots)
 chrome-devtools-mcp (diagnostics only, disabled by default)
-Local vision model (Qwen3.6-35B via Lemonade at 127.0.0.1:13305)
+Local vision model (Lemonade server — endpoint + model from `lpb-config show`)
 ```
 
 ## Prerequisites
@@ -74,12 +74,16 @@ Produces numbered bounding boxes [1], [2], [3] that correspond to refs @e1, @e2,
 
 ### 4. Analyze with Local Vision Model
 
+Resolve the live endpoint and model first — never hardcode them:
+`lpb-config show` prints the Lemonade server URL and the default model
+(use those as `LEMONADE_BASE_URL` / `VISION_MODEL` below).
+
 ```bash
 SS_BASE64=$(base64 -w 0 /tmp/annotated.png)
-curl -s http://127.0.0.1:13305/v1/chat/completions \
+curl -s "$LEMONADE_BASE_URL/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d "{
-    \"model\": \"Qwen3.6-35B-A3B-MTP-GGUF\",
+    \"model\": \"$VISION_MODEL\",
     \"messages\": [
       {
         \"role\": \"user\",

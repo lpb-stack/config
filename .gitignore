@@ -21,7 +21,7 @@ npm/
 tmp/
 tools/
 bin/
-.pi-hermes-locks.sqlite*
+.lpb-memory-locks.sqlite*
 pi-hermes-memory/
 ssh-host-keys/
 agent-browser/

@@ -99,9 +99,11 @@ win in `settings.json`, local keys win in the memory config).
 ## Configuration
 
 ### settings.json
-- **Provider:** lemonade (local LLM server)
-- **Model:** Qwen3.6-35B-A3B-MTP-GGUF
-- **Thinking:** medium (default); adjustable via `/settings` in Pi TUI
+- **Provider:** lemonade (external LLM server)
+- **Model / endpoint:** runtime config — `lpb-config show` (change with
+  `lpb-config set model|base-url|api-key` or the `lpb setup` wizard)
+- **Thinking:** medium (default); adjustable via `/settings` in Pi TUI or
+  `lpb-config set thinking`
 - **Packages:** extensions installed at runtime (from `settings.json#packages`):
   - `git:github.com/lpb-stack/lemonade-pi-plugin@lpb`
   - `git:github.com/lpb-stack/lpb-memory@main`
