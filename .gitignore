@@ -29,6 +29,7 @@ projects-memory/
 gh-config/
 browser-lession/
 powerline-footer/
+model-params.json
 
 # Local state — per-user, not shared
 extensions/
