@@ -69,10 +69,16 @@ Validated report saved to `/browser-states/<session-id>/validated.json`
 
 ## Configuration
 
-| Env Var / Setting | Value | Purpose |
+Base URL and vision model are resolved automatically (same sources the pi
+provider plugin uses), so the one-liner needs no env setup in the container:
+
+| Setting | Resolution order | Purpose |
 |---|---|---|
-| `LEMONADE_BASE_URL` | from `lpb-config show` (external host — the `127.0.0.1` env value is a placeholder) | Vision model API |
-| `VISION_MODEL` | default model from `lpb-config show` | Vision model ID |
+| Lemonade base URL | `~/.pi/agent/auth.json` (persisted — what `lpb-config show` prints) → `LEMONADE_BASE_URL` env → `http://127.0.0.1:13305/v1` | Vision model API |
+| Vision model | `VISION_MODEL` env → agent default model (`settings.json`) | Vision model ID |
+
+The `127.0.0.1` fallback only works when the Lemonade server is reachable
+on loopback (host-networked container, or server on the same machine).
 
 ## Pitfalls
 
@@ -80,3 +86,4 @@ Validated report saved to `/browser-states/<session-id>/validated.json`
 - **Zombie processes**: Always close the session when done (`agent-browser --session <id> close`)
 - **Vision model timeout**: The retry loop handles JSON parsing failures (max 3 attempts)
 - **Base64 image size**: Large screenshots increase API cost and latency
+- **Running outside the image (on a host)**: `zod` must resolve (set `NODE_PATH` to a `node_modules` containing zod), `/browser-states` must exist and be writable, and if `auth.json` is absent the `LEMONADE_BASE_URL` env must point at the real server
