@@ -29,15 +29,16 @@ The Lemonade server is an **external host** persisted in `~/.pi/agent/auth.json`
 
 ## Architecture
 
-This Pi.dev stack is organized across 6 repositories (all under
-`github.com/lpb-stack`):
+This Pi.dev stack is organized across 5 repositories (all under
+`github.com/lpb-stack`). Pi itself is not a stack repo — the image installs
+mainstream pi from the npm registry at `LPB_PI_VERSION` (the old fork is
+retired; last state: tag `pre-defork-0.0.71` in `lpb-stack/pi`):
 
-1. **pi** (`lpb-stack/pi`) — forked Pi monorepo with `reasoning_effort` support for Qwen models
-2. **lemonade-pi-plugin** — Lemonade provider plugin (Qwen thinking handling)
-3. **config** (`lpb-stack/config`) — this repo: settings, skills, agents, support files
-4. **devstack** (`lpb-stack/devstack`) — Docker-based development environment (single source of VERSION)
-5. **pi-subagents** — centralized subagent model registry
-6. **lpb-memory** — persistent memory extension (subprocess reviews)
+1. **lemonade-pi-plugin** — Lemonade provider plugin (Qwen thinking handling)
+2. **config** (`lpb-stack/config`) — this repo: settings, skills, agents, support files
+3. **devstack** (`lpb-stack/devstack`) — Docker-based development environment (single source of VERSION)
+4. **pi-subagents** — centralized subagent model registry
+5. **lpb-memory** — persistent memory extension (subprocess reviews)
 
 ## Thinking (reasoning)
 
@@ -73,11 +74,16 @@ Live state: `lpb-config show`.
   screenshots, visual analysis via the configured vision model)
 - **browser-validation** — navigate, snapshot, screenshot, vitals,
   accessibility audit, vision analysis, structured JSON report
+- **lemonade-model-params** — tune lemonade-served models: wire IDs from the
+  server catalog, per-model parameter file, vendor params, wire verification
 - **mcp-vision-analysis** — visual page analysis via the Lemonade vision API
 
 ## Custom Subagents
 
 - **researcher** — web research via Exa MCP; focused research briefs
+- **exa-search** — web research agent using Exa MCP search and crawl
+- **browser-automation** — browser testing agent using the agent-browser MCP
+- **vision-analysis** — open a page, screenshot, analyze with the session model
 
 ## Support CLIs
 
