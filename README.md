@@ -152,11 +152,13 @@ container boot, these files are seeded into `~/.pi/agent/`.
 | Repo | Role |
 |---|---|
 | [devstack](https://github.com/lpb-stack/devstack) | Container image + `lpb` launcher |
-| [pi](https://github.com/lpb-stack/pi) | Pi monorepo fork (Qwen reasoning) |
 | [lemonade-pi-plugin](https://github.com/lpb-stack/lemonade-pi-plugin) | Lemonade provider extension |
 | [pi-subagents](https://github.com/lpb-stack/pi-subagents) | Subagent model registry |
 | [lpb-memory](https://github.com/lpb-stack/lpb-memory) | Persistent memory extension |
 | [config](https://github.com/lpb-stack/config) | This repo (settings, skills, agents) |
+
+Pi itself is not a stack repo — the image installs mainstream pi from the
+npm registry at `LPB_PI_VERSION` (the former fork is retired).
 
 See the [devstack](https://github.com/lpb-stack/devstack) repo for container setup
 and [lpb-stack.github.io/devstack/](https://lpb-stack.github.io/devstack/) for the project site.
