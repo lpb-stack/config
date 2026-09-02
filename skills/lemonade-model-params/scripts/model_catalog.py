@@ -11,8 +11,14 @@ Commands:
             the EXACT key to use in the catalog file.
   card      Online-lookup hints for a model's vendor card (checkpoint repo,
             candidate URLs, search terms for the Exa MCP step).
-  entry     Build a catalog entry from CLI flags; print it or merge it
-            into the user file.
+  entry     Build a single catalog entry from CLI flags; print it or merge
+            it into the user file. Quick single-model edits.
+            Flags: --max-tokens (ceiling), --budgets, --thinking, --coding,
+            --non-thinking, --no-think-suffix.
+  merge     Merge a catalog-shaped JSON file (one or MANY models) into the
+            user file — the preferred multi-model population path.
+  effective Print the RESOLVED merged catalog (user tier over plugin tier)
+            per model — exactly what the plugin's tuning hook will use.
   validate  Shape-check a catalog file and print a resolution preview.
 
 Env:
@@ -92,7 +98,8 @@ def fetch_server_models(url):
     try:
         data = fetch_json(f"{base}/api/v1/models", api_key)
     except Exception as e:
-        die(f"cannot reach {base}/api/v1/models: {e}")
+        die(f"cannot reach {base}/api/v1/models: {e} — check the server URL "
+            "(`lpb-config show` is the source of truth)")
     items = data.get("data") if isinstance(data, dict) else None
     return items if isinstance(items, list) else []
 
@@ -127,7 +134,7 @@ def cmd_list(args):
         die("server returned no models")
     user = load_json_file(user_file()) or {}
     plugin = load_json_file(PLUGIN_FILE_DEFAULT) or {}
-    print(f"{'ID (catalog key)':38} {'ctx':>8}  think?  catalog      checkpoint")
+    print(f"{'ID (catalog key)':38} {'ctx':>8} {'max':>7}  think?  catalog      checkpoint")
     print("-" * 100)
     for m in sorted(models, key=lambda x: (x.get("id") or "")):
         mid = m.get("id") or "?"
@@ -137,7 +144,9 @@ def cmd_list(args):
         if mid in plugin:
             tags.append("plugin")
         tag = ",".join(tags) if tags else "-"
-        print(f"{mid:38} {str(ctx_of(m) or '-'):>8}  "
+        merged = merge_entry(plugin.get(mid) or {}, user.get(mid) or {})
+        mt = merged.get("maxTokens", "-")
+        print(f"{mid:38} {str(ctx_of(m) or '-'):>8} {str(mt):>7}  "
               f"{'yes' if is_think_heuristic(m) else 'no ':5}  {tag:10}  "
               f"{m.get('checkpoint') or '-'}")
     print(f"\n{len(models)} models — server: {server_api_base(url)}")
@@ -166,7 +175,7 @@ def cmd_card(args):
     name = (m or {}).get("name") or args.model
     print(f"  1. Exa search: \"{base_name or name} model card recommended sampling parameters\"")
     print(f"  2. Likely official card: HF <org>/{base_name or name} "
-          f"(vendor docs too, e.g. qwen.ai / deepseek.com)")
+          f"(find the vendor org via Exa search — quantization repos are NOT the card)")
     print("  Extract per mode: thinking (general), coding (if any), non-thinking:")
     print("    temperature / top_p / top_k / min_p / presence_penalty / repetition_penalty")
     print("  Plus: thinking budget guidance (per level if given) and the model-native")
@@ -209,8 +218,119 @@ def parse_budgets(value):
     return out
 
 
+def merge_entry(prev, entry):
+    """Merge `entry` over `prev` per section, then per field — the same
+    semantics as lib/model-params.ts resolveModelEntry (user wins)."""
+    merged = {}
+    for section in ("budgets", "thinking", "coding", "nonThinking"):
+        if section in prev or section in entry:
+            merged[section] = {**prev.get(section, {}), **entry.get(section, {})}
+    if "noThinkSuffix" in entry or "noThinkSuffix" in prev:
+        merged["noThinkSuffix"] = entry.get("noThinkSuffix", prev.get("noThinkSuffix"))
+    if "maxTokens" in entry or "maxTokens" in prev:
+        merged["maxTokens"] = entry.get("maxTokens", prev.get("maxTokens"))
+    return merged
+
+
+def check_entry(mid, e):
+    """Validate one entry. Returns (problems, rendered columns)."""
+    problems = []
+    if not isinstance(e, dict):
+        return [f"{mid}: entry must be an object"], ("ERROR", "-", "-", "-", "-")
+
+    def row(sec, numeric):
+        v = e.get(sec)
+        if v is None:
+            return "-"
+        if not isinstance(v, dict):
+            problems.append(f"{mid}.{sec}: must be an object")
+            return "ERR"
+        for k, val in v.items():
+            bad = not isinstance(val, (int, float)) or isinstance(val, bool)
+            if numeric == "budgets" and (k not in BUDGET_KEYS
+                                         or not isinstance(val, int) or val <= 0):
+                bad = True
+            if bad:
+                problems.append(f"{mid}.{sec}.{k}: invalid")
+        return json.dumps(v)
+
+    mt = e.get("maxTokens")
+    if mt is not None and (not isinstance(mt, int) or isinstance(mt, bool) or mt <= 0):
+        problems.append(f"{mid}.maxTokens: must be a positive integer, got {mt!r}")
+        mt_disp = "ERR"
+    else:
+        mt_disp = str(mt) if mt is not None else "-"
+
+    budgets_sec = e.get("budgets")
+    if budgets_sec is None:
+        budgets = "-"
+    elif not isinstance(budgets_sec, dict):
+        row("budgets", "budgets")
+        budgets = "ERR"
+    else:
+        row("budgets", "budgets")  # validates keys + positive ints
+        budgets = " ".join(f"{k}={budgets_sec[k]}" for k in BUDGET_KEYS
+                           if k in budgets_sec) or "-"
+    thinking = row("thinking", "s")
+    coding = row("coding", "s") if isinstance(e.get("coding"), dict) else None
+    non_t = row("nonThinking", "s")
+    suffix = e.get("noThinkSuffix")
+    if suffix is not None and not isinstance(suffix, str):
+        problems.append(f"{mid}.noThinkSuffix: must be a string")
+        suffix = "ERR"
+    if suffix is None:
+        suffix_disp = "/no_think (default)"
+    elif suffix == "":
+        suffix_disp = "(none — disabled)"
+    else:
+        suffix_disp = suffix
+    return problems, (mt_disp, budgets, thinking, coding, non_t, suffix_disp)
+
+
+def effective_catalog(plugin, user):
+    """Resolved merged catalog — mirror of resolveModelEntry. Returns
+    {model: (entry, origin)} for the union of both tiers."""
+    out = {}
+    for mid in sorted(set(plugin or {}) | set(user or {})):
+        base = (plugin or {}).get(mid)
+        over = (user or {}).get(mid)
+        if base is None and over is None:
+            continue
+        origin = "user+plugin" if (base and over) else ("user" if over is not None else "plugin")
+        out[mid] = (merge_entry(base or {}, over or {}), origin)
+    return out
+
+
+def print_entry_table(resolved, show_origin=True):
+    """Print (entry, origin-or-None) pairs as a table; returns problem count."""
+    errors = 0
+    if show_origin:
+        print(f"{'model':38} {'src':11} {'max':>7}  budgets              thinking            nonThinking  suffix")
+    else:
+        print(f"{'model':38} {'max':>7}  budgets              thinking            nonThinking  suffix")
+    print("-" * 118)
+    for mid, (e, origin) in resolved.items():
+        problems, (mt_disp, budgets, thinking, coding, non_t, suffix) = check_entry(mid, e)
+        errors += len(problems)
+        for p in problems:
+            print(f"  {p}")
+        if show_origin:
+            print(f"{mid:38} {origin or '-':11} {mt_disp:>7}  {budgets:20} {thinking or '-':18} {non_t or '-':12}  {suffix}")
+            if coding:
+                print(f"{'':38} {'':11} {'':>7}  coding: {coding}")
+        else:
+            print(f"{mid:38} {mt_disp:>7}  {budgets:20} {thinking or '-':18} {non_t or '-':12}  {suffix}")
+            if coding:
+                print(f"{'':38} {'':>7}  coding: {coding}")
+    return errors
+
+
 def cmd_entry(args):
     entry = {}
+    if args.max_tokens is not None:
+        if not isinstance(args.max_tokens, int) or args.max_tokens <= 0:
+            die("--max-tokens must be a positive integer")
+        entry["maxTokens"] = args.max_tokens
     budgets = parse_budgets(args.budgets)
     if budgets:
         entry["budgets"] = budgets
@@ -226,8 +346,8 @@ def cmd_entry(args):
     if args.no_think_suffix is not None:
         entry["noThinkSuffix"] = args.no_think_suffix
     if not entry:
-        die("nothing to do — pass at least one of --budgets/--thinking/--coding/"
-            "--non-thinking/--no-think-suffix")
+        die("nothing to do — pass at least one of --max-tokens/--budgets/"
+            "--thinking/--coding/--non-thinking/--no-think-suffix")
 
     if args.merge is None:
         print(json.dumps({args.model: entry}, indent=2))
@@ -241,20 +361,55 @@ def cmd_entry(args):
         cat = {}
     if not isinstance(cat, dict):
         die(f"{path}: top level must be a JSON object")
-    prev = cat.get(args.model) or {}
-    merged = {}
-    for section in ("budgets", "thinking", "coding", "nonThinking"):
-        if section in prev or section in entry:
-            merged[section] = {**prev.get(section, {}), **entry.get(section, {})}
-    if "noThinkSuffix" in entry or "noThinkSuffix" in prev:
-        merged["noThinkSuffix"] = entry.get("noThinkSuffix", prev.get("noThinkSuffix"))
-    cat[args.model] = merged
+    cat[args.model] = merge_entry(cat.get(args.model) or {}, entry)
     with open(path, "w") as f:
         json.dump(cat, f, indent=2)
         f.write("\n")
     print(f"merged into {path}:")
-    print(json.dumps({args.model: merged}, indent=2))
+    print(json.dumps({args.model: cat[args.model]}, indent=2))
     print("applies on the NEXT request (mtime-checked) — no pi restart needed.")
+
+
+def cmd_merge(args):
+    src = load_json_file(args.file)
+    if src is None:
+        die(f"{args.file}: not found or invalid JSON")
+    if not isinstance(src, dict):
+        die(f"{args.file}: top level must be a JSON object of model entries")
+    for mid, e in src.items():
+        if not isinstance(e, dict):
+            die(f"{args.file}: entry for {mid!r} must be an object")
+    target = args.target or user_file()
+    cat = load_json_file(target)
+    if cat is None:
+        cat = {}
+    if not isinstance(cat, dict):
+        die(f"{target}: top level must be a JSON object")
+    for mid in sorted(src):
+        cat[mid] = merge_entry(cat.get(mid) or {}, src[mid])
+    if args.dry_run:
+        print(f"would merge {len(src)} model(s) from {args.file} into {target}:")
+        for mid in sorted(src):
+            print(json.dumps({mid: cat[mid]}, indent=2))
+        return
+    with open(target, "w") as f:
+        json.dump(cat, f, indent=2)
+        f.write("\n")
+    print(f"merged {len(src)} model(s) from {args.file} into {target}:")
+    for mid in sorted(src):
+        print(f"  {mid}")
+    print("run: validate + effective  ·  applies on the NEXT request (no pi restart)")
+
+
+def cmd_effective(args):
+    plugin = load_json_file(PLUGIN_FILE_DEFAULT) or {}
+    user = load_json_file(user_file()) or {}
+    resolved = {mid: (e, o) for mid, (e, o) in effective_catalog(plugin, user).items()}
+    print_entry_table(resolved)
+    print()
+    print(f"user file:    {user_file()} (exists: {os.path.exists(user_file())})")
+    print(f"plugin file:  {PLUGIN_FILE_DEFAULT}")
+    print("this is exactly what the tuning hook resolves (user tier wins per field).")
 
 
 def cmd_validate(args):
@@ -269,58 +424,8 @@ def cmd_validate(args):
         return
     if not isinstance(cat, dict):
         die(f"{path}: top level must be a JSON object (got {type(cat).__name__})")
-    errors = 0
-    print(f"{'model':38} budgets              thinking            nonThinking  suffix")
-    print("-" * 108)
-    for mid in sorted(cat):
-        e = cat[mid]
-        if not isinstance(e, dict):
-            print(f"{mid:38} ERROR: entry must be an object")
-            errors += 1
-            continue
-
-        def row(sec, numeric):
-            nonlocal errors
-            v = e.get(sec)
-            if v is None:
-                return "-"
-            if not isinstance(v, dict):
-                print(f"  {mid}.{sec}: must be an object")
-                errors += 1
-                return "ERR"
-            for k, val in v.items():
-                bad = not isinstance(val, (int, float)) or isinstance(val, bool)
-                if numeric == "budgets" and (k not in BUDGET_KEYS
-                                             or not isinstance(val, int) or val <= 0):
-                    bad = True
-                if bad:
-                    print(f"  {mid}.{sec}.{k}: invalid")
-                    errors += 1
-            return json.dumps(v)
-
-        budgets_sec = e.get("budgets")
-        if budgets_sec is None:
-            budgets = "-"
-        elif not isinstance(budgets_sec, dict):
-            row("budgets", "budgets")
-            budgets = "ERR"
-        else:
-            row("budgets", "budgets")  # validates keys + positive ints
-            budgets = " ".join(f"{k}={budgets_sec[k]}" for k in BUDGET_KEYS
-                               if k in budgets_sec) or "-"
-        thinking = row("thinking", "s")
-        if isinstance(e.get("coding"), dict):
-            row("coding", "s")
-        non_t = row("nonThinking", "s")
-        suffix = e.get("noThinkSuffix")
-        if suffix is not None and not isinstance(suffix, str):
-            print(f"  {mid}.noThinkSuffix: must be a string")
-            errors += 1
-            suffix = "ERR"
-        suffix = suffix if suffix is not None else "/no_think (default)"
-        print(f"{mid:38} {budgets:20} {thinking or '-':18} {non_t or '-':12}  {suffix}")
-        if isinstance(e.get("coding"), dict):
-            print(f"{'':38} coding: {json.dumps(e['coding'])}")
+    resolved = {mid: (e, None) for mid, e in sorted(cat.items())}
+    errors = print_entry_table(resolved, show_origin=False)
     print()
     if errors:
         die(f"{errors} problem(s) in {path}")
@@ -341,6 +446,9 @@ def main():
 
     p = sub.add_parser("entry", help="build/merge a catalog entry")
     p.add_argument("model", help="wire model id (catalog key)")
+    p.add_argument("--max-tokens", type=int,
+                   help="response ceiling (max_completion_tokens) in tokens — exact value, "
+                        "applied at model sync (needs pi restart or re-sync to take effect)")
     p.add_argument("--budgets", help='JSON, e.g. \'{"minimal":2048,"low":3072,"medium":8192,"high":16384}\'')
     p.add_argument("--thinking", help='JSON sampling row, e.g. \'{"temperature":1.0,"top_p":0.95,"top_k":20,"min_p":0.0,"presence_penalty":0.0,"repetition_penalty":1.0}\'')
     p.add_argument("--coding", help="JSON coding-profile row (merged over --thinking)")
@@ -350,12 +458,21 @@ def main():
     p.add_argument("--merge", nargs="?", const=USER_FILE_DEFAULT, default=None,
                    metavar="FILE", help="merge into FILE (default: the user catalog)")
 
+    p = sub.add_parser("merge", help="merge a catalog-shaped JSON file (1..N models) into the catalog")
+    p.add_argument("file", help='JSON file: {"<model id>": {"budgets": {...}, "thinking": {...}, ...}}')
+    p.add_argument("target", nargs="?", help="target file (default: the user catalog)")
+    p.add_argument("--dry-run", action="store_true",
+                   help="print the resulting merged entries without writing")
+
+    p = sub.add_parser("effective", help="resolved merged catalog (user over plugin) — what the hook sees")
+
     p = sub.add_parser("validate", help="shape-check + resolution preview")
     p.add_argument("file", nargs="?", help="catalog file (default: user file)")
     p.add_argument("--plugin", action="store_true", help="validate the plugin-shipped catalog")
 
     args = ap.parse_args()
-    {"list": cmd_list, "card": cmd_card, "entry": cmd_entry, "validate": cmd_validate}[args.cmd](args)
+    {"list": cmd_list, "card": cmd_card, "entry": cmd_entry, "merge": cmd_merge,
+     "effective": cmd_effective, "validate": cmd_validate}[args.cmd](args)
 
 
 if __name__ == "__main__":

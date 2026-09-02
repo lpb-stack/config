@@ -48,9 +48,10 @@ The Lemonade model serves thinking via `enable_thinking`; Pi sends
 
 Known issue: Qwen models with thinking enabled throw "context size exceeded"
 when `prompt + max_tokens` exceeds the window. Mitigations baked into the
-stack: `max_tokens` capped at ~6% of the context window
-(`LPB_MAX_TOKENS_CONTEXT_RATIO=0.06`), `reserveTokens` raised so compaction
-fires earlier, thinking disabled during compaction.
+stack: per-model response ceiling in the lemonade-pi-plugin model catalog
+(`maxTokens` — 16384 for Qwen thinking models; exact values, no formula),
+`reserveTokens` raised so compaction fires earlier, thinking disabled during
+compaction.
 
 ## MCP Servers
 
