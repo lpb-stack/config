@@ -9,5 +9,6 @@
   "failureInjectionMaxAgeDays": 3,
   "memoryPolicyStyle": "none",
   "reviewTimeoutMs": 300000,
-  "consolidationTimeoutMs": 300000
+  "consolidationTimeoutMs": 300000,
+  "memoryEnabled": true
 }
