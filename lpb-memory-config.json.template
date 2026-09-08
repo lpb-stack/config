@@ -7,6 +7,7 @@
   "failureInjectionEnabled": true,
   "failureInjectionMaxEntries": 3,
   "failureInjectionMaxAgeDays": 3,
+  "llmThinkingOverride": "off",
   "memoryPolicyStyle": "none",
   "reviewTimeoutMs": 300000,
   "consolidationTimeoutMs": 300000,
