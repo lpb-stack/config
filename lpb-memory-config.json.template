@@ -2,7 +2,7 @@
   "reviewTransport": "subprocess",
   "memoryMode": "legacy-inject",
   "memoryCharLimit": 3000,
-  "userCharLimit": 3000,
+  "userCharLimit": 5000,
   "projectCharLimit": 5000,
   "failureInjectionEnabled": true,
   "failureInjectionMaxEntries": 3,
