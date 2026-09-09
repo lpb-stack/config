@@ -3,7 +3,7 @@
   "memoryMode": "legacy-inject",
   "memoryCharLimit": 3000,
   "userCharLimit": 3000,
-  "projectCharLimit": 2000,
+  "projectCharLimit": 5000,
   "failureInjectionEnabled": true,
   "failureInjectionMaxEntries": 3,
   "failureInjectionMaxAgeDays": 3,
