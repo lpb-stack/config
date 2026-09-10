@@ -3,8 +3,8 @@
 
 Works with the lemonade-pi-plugin's per-model parameter catalog
 (lib/model-params.ts). The catalog decides which models the plugin tunes:
-a wire model id in the catalog gets its budgets/sampling/off-switch token;
-everything else passes through with default pi behavior.
+a wire model id in the catalog gets its budgets/sampling/off-switch
+(offParams); everything else passes through with default pi behavior.
 
 Commands:
   list      Wire model IDs from the lemonade server (/api/v1/models) —
@@ -14,7 +14,7 @@ Commands:
   entry     Build a single catalog entry from CLI flags; print it or merge
             it into the user file. Quick single-model edits.
             Flags: --max-tokens (ceiling), --budgets, --thinking, --coding,
-            --non-thinking, --no-think-suffix.
+            --non-thinking, --off-params (--no-think-suffix is deprecated).
   merge     Merge a catalog-shaped JSON file (one or MANY models) into the
             user file — the preferred multi-model population path.
   effective Print the RESOLVED merged catalog (user tier over plugin tier)
@@ -28,7 +28,7 @@ Env:
 Stdlib only. Examples:
   model_catalog.py list
   model_catalog.py card Qwen3.8-27B-GGUF
-  model_catalog.py entry "My-Model-8B" --thinking '{"temperature":0.7,"top_p":0.8,"top_k":20,"min_p":0.0,"presence_penalty":0.0,"repetition_penalty":1.0}' --no-think-suffix "" --merge
+  model_catalog.py entry "My-Model-8B" --thinking '{"temperature":0.7,"top_p":0.8,"top_k":20,"min_p":0.0,"presence_penalty":0.0,"repetition_penalty":1.0}' --off-params '{"enable_thinking":false}' --merge
   model_catalog.py validate
 """
 import argparse
@@ -220,15 +220,34 @@ def parse_budgets(value):
 
 def merge_entry(prev, entry):
     """Merge `entry` over `prev` per section, then per field — the same
-    semantics as lib/model-params.ts resolveModelEntry (user wins)."""
+    semantics as lib/model-params.ts resolveModelEntry (user wins).
+    Mirrors that function field-for-field: offParams/effortMap dict-merge,
+    numeric ceilings, capability booleans, budget-field name, legacy
+    noThinkSuffix passthrough."""
+    def dm(a, b):
+        m = {**(a or {}), **(b or {})}
+        return m or None
     merged = {}
-    for section in ("budgets", "thinking", "coding", "nonThinking"):
-        if section in prev or section in entry:
-            merged[section] = {**prev.get(section, {}), **entry.get(section, {})}
-    if "noThinkSuffix" in entry or "noThinkSuffix" in prev:
-        merged["noThinkSuffix"] = entry.get("noThinkSuffix", prev.get("noThinkSuffix"))
-    if "maxTokens" in entry or "maxTokens" in prev:
-        merged["maxTokens"] = entry.get("maxTokens", prev.get("maxTokens"))
+    for section in ("budgets", "thinking", "coding", "nonThinking",
+                    "offParams", "effortMap"):
+        m = dm(prev.get(section), entry.get(section))
+        if m is not None:
+            merged[section] = m
+    for key in ("maxTokens", "contextWindow"):
+        v = entry.get(key, prev.get(key))
+        if isinstance(v, int) and not isinstance(v, bool) and v > 0:
+            merged[key] = v
+    for key in ("reasoning", "vision", "disableReasoning"):
+        v = entry.get(key, prev.get(key))
+        if isinstance(v, bool):
+            merged[key] = v
+    field = entry.get("thinkingTokenBudgetField",
+                      prev.get("thinkingTokenBudgetField"))
+    if isinstance(field, str) and field:
+        merged["thinkingTokenBudgetField"] = field
+    suffix = entry.get("noThinkSuffix", prev.get("noThinkSuffix"))
+    if suffix is not None:
+        merged["noThinkSuffix"] = suffix
     return merged
 
 
@@ -274,17 +293,15 @@ def check_entry(mid, e):
     thinking = row("thinking", "s")
     coding = row("coding", "s") if isinstance(e.get("coding"), dict) else None
     non_t = row("nonThinking", "s")
+    off = e.get("offParams")
+    if off is not None and not isinstance(off, dict):
+        problems.append(f"{mid}.offParams: must be an object")
+    off_disp = json.dumps(off) if isinstance(off, dict) and off else (
+        "ERR" if off is not None and not isinstance(off, dict) else "-")
     suffix = e.get("noThinkSuffix")
     if suffix is not None and not isinstance(suffix, str):
-        problems.append(f"{mid}.noThinkSuffix: must be a string")
-        suffix = "ERR"
-    if suffix is None:
-        suffix_disp = "/no_think (default)"
-    elif suffix == "":
-        suffix_disp = "(none — disabled)"
-    else:
-        suffix_disp = suffix
-    return problems, (mt_disp, budgets, thinking, coding, non_t, suffix_disp)
+        problems.append(f"{mid}.noThinkSuffix: must be a string (deprecated)")
+    return problems, (mt_disp, budgets, thinking, coding, non_t, off_disp)
 
 
 def effective_catalog(plugin, user):
@@ -305,21 +322,21 @@ def print_entry_table(resolved, show_origin=True):
     """Print (entry, origin-or-None) pairs as a table; returns problem count."""
     errors = 0
     if show_origin:
-        print(f"{'model':38} {'src':11} {'max':>7}  budgets              thinking            nonThinking  suffix")
+        print(f"{'model':38} {'src':11} {'max':>7}  budgets              thinking            nonThinking  offParams")
     else:
-        print(f"{'model':38} {'max':>7}  budgets              thinking            nonThinking  suffix")
+        print(f"{'model':38} {'max':>7}  budgets              thinking            nonThinking  offParams")
     print("-" * 118)
     for mid, (e, origin) in resolved.items():
-        problems, (mt_disp, budgets, thinking, coding, non_t, suffix) = check_entry(mid, e)
+        problems, (mt_disp, budgets, thinking, coding, non_t, off_disp) = check_entry(mid, e)
         errors += len(problems)
         for p in problems:
             print(f"  {p}")
         if show_origin:
-            print(f"{mid:38} {origin or '-':11} {mt_disp:>7}  {budgets:20} {thinking or '-':18} {non_t or '-':12}  {suffix}")
+            print(f"{mid:38} {origin or '-':11} {mt_disp:>7}  {budgets:20} {thinking or '-':18} {non_t or '-':12}  {off_disp}")
             if coding:
                 print(f"{'':38} {'':11} {'':>7}  coding: {coding}")
         else:
-            print(f"{mid:38} {mt_disp:>7}  {budgets:20} {thinking or '-':18} {non_t or '-':12}  {suffix}")
+            print(f"{mid:38} {mt_disp:>7}  {budgets:20} {thinking or '-':18} {non_t or '-':12}  {off_disp}")
             if coding:
                 print(f"{'':38} {'':>7}  coding: {coding}")
     return errors
@@ -344,10 +361,19 @@ def cmd_entry(args):
     if non_thinking:
         entry["nonThinking"] = non_thinking
     if args.no_think_suffix is not None:
+        warn("--no-think-suffix is deprecated (plugin 59c6537) — use --off-params for the wire off-switch")
         entry["noThinkSuffix"] = args.no_think_suffix
+    if args.off_params is not None:
+        try:
+            op = json.loads(args.off_params)
+        except json.JSONDecodeError as ex:
+            die(f"--off-params is not valid JSON: {ex}")
+        if not isinstance(op, dict) or not op:
+            die("--off-params must be a non-empty JSON object, e.g. '{\"enable_thinking\": false}'")
+        entry["offParams"] = op
     if not entry:
         die("nothing to do — pass at least one of --max-tokens/--budgets/"
-            "--thinking/--coding/--non-thinking/--no-think-suffix")
+            "--thinking/--coding/--non-thinking/--off-params")
 
     if args.merge is None:
         print(json.dumps({args.model: entry}, indent=2))
@@ -454,7 +480,9 @@ def main():
     p.add_argument("--coding", help="JSON coding-profile row (merged over --thinking)")
     p.add_argument("--non-thinking", help="JSON off-level sampling row")
     p.add_argument("--no-think-suffix", default=None,
-                   help="off-switch token; empty string disables for this model; omit = default /no_think")
+                   help="DEPRECATED — use --off-params; kept for legacy files")
+    p.add_argument("--off-params",
+                   help='P5 wire off-switch row, JSON, e.g. \'{"enable_thinking": false}\'')
     p.add_argument("--merge", nargs="?", const=USER_FILE_DEFAULT, default=None,
                    metavar="FILE", help="merge into FILE (default: the user catalog)")
 

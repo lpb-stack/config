@@ -6,7 +6,7 @@ description: Tune lemonade-served models — exact wire IDs from the server cata
 
 Manage the lemonade-pi-plugin's per-model parameter catalog: fetch the exact
 model id from the server, fetch vendor-recommended settings (sampling,
-budgets, off-switch token) from online model cards, write catalog entries,
+budgets, offParams (wire off-switch)) from online model cards, write catalog entries,
 and verify what is actually sent over the wire.
 
 ## When to Use
@@ -68,8 +68,8 @@ Run `python3 $S card <id>` for the hints, then use exa:
 - Also extract: per-level thinking budget guidance (if given), the
   recommended **max output length** (feeds the `maxTokens` ceiling — for
   Qwen thinking models the stack standard is 16384, i.e. the high-level
-  budget), and any model-native off-switch token (Qwen3.x hybrids:
-  `/no_think`; other families may differ or have none).
+  budget), and whether the model has a per-request thinking flag (Qwen
+  hybrids: `enable_thinking`) — that becomes the `offParams` row.
 - Cite the source in your summary. If sibling model cards disagree, follow
   the **served model's** card and note the discrepancy.
 
@@ -84,7 +84,7 @@ reviewable, no shell-quoting), then a single merge:
                "budgets": {"minimal":2048,"low":3072,"medium":8192,"high":16384},
                "thinking": {"temperature":1.0,"top_p":0.95,"top_k":20,"min_p":0.0,"presence_penalty":0.0,"repetition_penalty":1.0},
                "nonThinking": {"temperature":0.7,"top_p":0.8,"top_k":20,"min_p":0.0,"presence_penalty":1.5,"repetition_penalty":1.0} },
-  "Model-B": { "nonThinking": {"temperature":0.9,"top_p":0.95}, "noThinkSuffix": "" }
+  "Model-B": { "nonThinking": {"temperature":0.9,"top_p":0.95} }
 }
 ```
 
@@ -103,15 +103,18 @@ JSON, then merge:
 python3 $S entry "<id>" \
   --max-tokens 16384 \
   --budgets '{"minimal":2048,"low":3072,"medium":8192,"high":16384}' \
-  --thinking '{...}' --non-thinking '{...}' --no-think-suffix "/no_think" \
+  --thinking '{...}' --non-thinking '{...}' \
+  --off-params '{"enable_thinking": false}' \
   --merge
 ```
 
 **Non-thinking / non-Qwen models** — omit `budgets` entirely, put the card's
 sampling in `nonThinking` (the row the plugin applies when pi sends no
 thinking fields; mirror it in `thinking` if the card also documents a
-reasoning mode), and set `"noThinkSuffix": ""` unless the card documents a
-model-native off token.
+reasoning mode). If the model has a per-request thinking flag, add
+`"offParams": {"enable_thinking": false}` — the P5 wire off-switch; without
+it, level `off` sends nothing and the model reasons at its own length.
+(`noThinkSuffix` is retired — the plugin dropped it in 59c6537.)
 
 `--merge` / `merge` apply on the **next request** (mtime-checked) — no pi
 restart.
@@ -126,8 +129,8 @@ restart.
 - Wire proof: set `LPB_PAYLOAD_DEBUG=1` in the devstack `.env`, **restart
   pi**, send one prompt at a thinking level and one at off, then inspect
   `/tmp/pi-payload-capture.jsonl`: lines for the model must show the
-  catalog's budget + sampling fields, and `no_think: true` at the off level.
-  Uncatalogued models show the raw view.
+  catalog's budget + sampling fields, and `enable_thinking: false` at the
+  off level (the offParams row). Uncatalogued models show the raw view.
 
 ### 5. (Optional) Promote to the plugin tier
 
@@ -157,13 +160,15 @@ commit/push on `lpb-dev` — with explicit user approval.
 - `think?` in `list` is a name heuristic — verify thinking support in the
   card before assuming a budget row matters.
 - QWEN_* env vars are retired: use `LPB_PAYLOAD_TUNING` (master),
-  `LPB_SAMPLING_PROFILE`, `LPB_NO_THINK_SUFFIX`, `LPB_MODEL_PARAMS_FILE`,
+  `LPB_SAMPLING_PROFILE`, `LPB_MODEL_PARAMS_FILE`,
   `LPB_PAYLOAD_DEBUG` (all `LPB_*` in devstack `.env` are promoted by
   start.sh; restart pi for env changes).
-- Non-Qwen models: the DEFAULT off-switch token is Qwen's `/no_think` —
-  pass `"noThinkSuffix": ""` (or the model's documented token) unless the
-  card documents one. Note: some families (e.g. Gemma 4) use a system-prefix
-  ON-token (`<|think|>`) — that is NOT an off-suffix; use `""`.
+- The off switch is the catalog `offParams` row (P5) — a wire field, NOT a
+  prompt suffix. `noThinkSuffix` was dropped from the plugin (59c6537); the
+  skill tool warns if you still pass `--no-think-suffix`. For families
+  without a per-request flag, omit `offParams` (off level then sends no
+  thinking fields — verified behavior, e.g. Gemma 4, whose `<|think|>`
+  ON-token is a system-prefix, not an off field).
 - `exa_web_fetch_exa` truncates long HF READMEs (cut off ~2KB, often before
   the sampling section) — fall back to `curl https://huggingface.co/<org>/<model>/raw/main/README.md`
   or rely on search highlights (which usually carry the sampling block).
