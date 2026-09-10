@@ -3,7 +3,7 @@ name: exa-search
 description: Web research agent using Exa MCP search and crawl
 tools: read, bash, grep, find, ls                     # Built-in tools
 extensions: true                                       # Loads mcp proxy tool
-model: parent
+# No `model:` — inherits the session model (omit the field; never hardcode).
 thinking: high
 max_turns: 20
 prompt_mode: replace

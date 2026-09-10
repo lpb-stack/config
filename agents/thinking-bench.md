@@ -2,7 +2,7 @@
 name: thinking-bench
 description: Runs one thinking-benchmark cell (single model × single level × N runs) against the Lemonade server and reports a compact summary
 tools: bash, read
-model: parent
+# No `model:` — inherits the session model (omit the field; never hardcode).
 thinking: off
 max_turns: 8
 prompt_mode: replace

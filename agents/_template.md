@@ -12,7 +12,7 @@ description: One-line description of what this agent does
 tools: read, bash, grep, find, ls          # Built-in tools (comma-sep or * for all)
 extensions: true                           # Load all extension tools
 exclude_extensions: vscode                 # Optional: block specific extensions
-model: parent                                 # Inherit parent session model. Or use "provider/modelId" explicitly.
+# (no `model:` — inherits the session model. Set "provider/modelId" to pin.)
 thinking: medium                           # off | low | medium | high | xhigh | max
 max_turns: 25                              # Wrap-up warning before hard abort
 prompt_mode: replace                       # replace (system prompt) or append

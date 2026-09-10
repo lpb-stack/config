@@ -4,7 +4,7 @@ description: Browser vision analysis — open a page, screenshot, analyze with t
 tools: mcp, read                        # MCP proxy for agent-browser + read for image
 extensions: true                        # Load extension tools (mcp proxy)
 exclude_extensions: vscode              # No VS Code tools needed
-model: parent                           # Inherit parent session model (user can override per-call)
+# No `model:` — inherits the session model (omit the field; override per-call if needed).
 thinking: high                          # Thorough visual analysis
 max_turns: 15
 prompt_mode: replace                    # Replace system prompt

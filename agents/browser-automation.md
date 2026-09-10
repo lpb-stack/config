@@ -4,7 +4,7 @@ description: Browser testing agent using agent-browser MCP server
 tools: mcp                                    # MCP proxy tool for agent-browser
 extensions: true                              # Load extension tools (mcp proxy)
 exclude_extensions: vscode                    # No VS Code tools needed
-model: parent                                 # Inherit parent session model (never hardcoded)
+# No `model:` — inherits the session model (omit the field; never hardcode).
 thinking: high                                # Careful analysis of browser state
 max_turns: 25                                 # Enough for navigation + interactions
 prompt_mode: replace                          # Replace system prompt

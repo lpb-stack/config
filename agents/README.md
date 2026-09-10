@@ -36,7 +36,7 @@ description: What this agent does
 tools: read, bash, grep, find, ls  # built-in tools (comma-sep or * for all)
 extensions: true                   # load all extension tools
 exclude_extensions: vscode         # optional: block specific extensions
-model: parent                                 # Inherit parent session model (never hardcoded)
+# (no `model:` — inherits the session model; set "provider/modelId" to pin)
 thinking: high                     # off | low | medium | high | xhigh | max
 max_turns: 30                      # wrap-up warning before hard abort
 prompt_mode: replace               # replace (vs append) system prompt

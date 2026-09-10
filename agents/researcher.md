@@ -3,7 +3,7 @@ name: researcher
 description: Web research specialist — searches and synthesizes focused briefs using Exa MCP
 tools: read, grep, ls                            # Built-in tools
 extensions: true                                 # Loads mcp proxy tool
-model: parent                                 # Inherit parent session model (never hardcoded)
+# No `model:` — inherits the session model (omit the field; never hardcode).
 max_turns: 20
 ---
 

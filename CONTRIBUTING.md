@@ -11,8 +11,10 @@ startup.
   `mcp.json`, `lpb-memory-config.json`), providers, MCP servers, extension installs.
 - **`pi-defaults.json`** — local-first defaults (subagent model, extension overrides).
 - **`skills/`** — reusable procedures (each skill is a `SKILL.md`).
-- **`agents/`** — subagent definitions. Always default to `model: parent`;
-  never hardcode a model.
+- **`agents/`** — subagent definitions. Omit the `model:` field so agents
+  inherit the session model; never hardcode a model. `agents/Explore.md`
+  overrides the built-in Explore (which pins an Anthropic model) — keep its
+  prompt in sync with pi-subagents `src/default-agents.ts` on upgrades.
 - **`support/`** — utilities installed to `/opt/pi-support/` (browser
   validation, session UUID, subagent output validation).
 - **`install.sh`** — the bootstrap that seeds `~/.pi/agent/`.
