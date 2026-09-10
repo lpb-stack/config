@@ -3,7 +3,7 @@
     "git:github.com/lpb-stack/lemonade-pi-plugin@__LPB_VERSION__",
     "git:github.com/lpb-stack/lpb-memory@__LPB_VERSION__",
     "npm:pi-mcp-adapter",
-    "git:github.com/lpb-stack/pi-subagents@__LPB_VERSION__",
+    "npm:@tintinweb/pi-subagents@0.19.0",
     "npm:pi-powerline-footer",
     "@upstash/context7-mcp"
   ],
