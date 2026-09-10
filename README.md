@@ -100,7 +100,7 @@ win in `settings.json`, local keys win in the memory config).
   - `git:github.com/lpb-stack/lemonade-pi-plugin@<stack-version>`
   - `git:github.com/lpb-stack/lpb-memory@<stack-version>`
   - `npm:pi-mcp-adapter`
-  - `git:github.com/lpb-stack/pi-subagents@<stack-version>`
+  - `npm:@tintinweb/pi-subagents` (upstream npm, no version pin — pi updates it via `pi update --extensions`)
   - `npm:pi-powerline-footer`
   - `@upstash/context7-mcp`
 
@@ -153,7 +153,7 @@ container boot, these files are seeded into `~/.pi/agent/`.
 |---|---|
 | [devstack](https://github.com/lpb-stack/devstack) | Container image + `lpb` launcher |
 | [lemonade-pi-plugin](https://github.com/lpb-stack/lemonade-pi-plugin) | Lemonade provider extension |
-| [pi-subagents](https://github.com/lpb-stack/pi-subagents) | Subagent model registry |
+| [pi-subagents](https://github.com/tintinweb/pi-subagents) | Subagent model registry (upstream npm; fork retired) |
 | [lpb-memory](https://github.com/lpb-stack/lpb-memory) | Persistent memory extension |
 | [config](https://github.com/lpb-stack/config) | This repo (settings, skills, agents) |
 

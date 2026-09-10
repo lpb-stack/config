@@ -29,16 +29,17 @@ The Lemonade server is an **external host** persisted in `~/.pi/agent/auth.json`
 
 ## Architecture
 
-This Pi.dev stack is organized across 5 repositories (all under
+This Pi.dev stack is organized across 4 repositories (all under
 `github.com/lpb-stack`). Pi itself is not a stack repo — the image installs
 mainstream pi from the npm registry at `LPB_PI_VERSION` (the old fork is
-retired; last state: tag `pre-defork-0.0.71` in `lpb-stack/pi`):
+retired; last state: tag `pre-defork-0.0.71` in `lpb-stack/pi`), and the
+subagent registry (pi-subagents) is likewise installed from upstream npm
+(`@tintinweb/pi-subagents`; the `lpb-stack/pi-subagents` fork is retired):
 
 1. **lemonade-pi-plugin** — Lemonade provider plugin (Qwen thinking handling)
 2. **config** (`lpb-stack/config`) — this repo: settings, skills, agents, support files
 3. **devstack** (`lpb-stack/devstack`) — Docker-based development environment (single source of VERSION)
-4. **pi-subagents** — centralized subagent model registry
-5. **lpb-memory** — persistent memory extension (subprocess reviews)
+4. **lpb-memory** — persistent memory extension (subprocess reviews)
 
 ## Thinking (reasoning)
 
