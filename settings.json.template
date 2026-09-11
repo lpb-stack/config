@@ -9,6 +9,17 @@
   ],
   "theme": "dark",
   "defaultThinkingLevel": "medium",
+  "powerline": {
+    "customItems": [
+      {
+        "id": "memory",
+        "statusKey": "memory",
+        "position": "right",
+        "color": "accent",
+        "hideWhenMissing": true
+      }
+    ]
+  },
   "mcp": {
     "directTools": false,
     "toolPrefix": "server"
